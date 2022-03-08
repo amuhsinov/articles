@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Article;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ArticleApiController extends Controller
 {
@@ -25,7 +27,21 @@ class ArticleApiController extends Controller
      */
     public function store(Request $request)
     {
-        $article = Article::create($request->all());
+        $imageBase64 = $request->input('image');
+        $extension = explode('/', explode(':', substr($imageBase64, 0, strpos($imageBase64, ';')))[1])[1];
+        $imageEncode = substr($imageBase64, 0, strpos($imageBase64, ',') + 1); 
+        $image = str_replace($imageEncode, '', $imageBase64); 
+        $image = str_replace(' ', '+', $image); 
+        $imageName = Str::random(10) . '.' . $extension;
+
+        Storage::disk('public')->put($imageName, base64_decode($image));
+
+        $article = Article::create([
+            'title' => $request->input('title'),
+            'description' => $request->input('description'),
+            'image' => $imageName,
+            'tag' => (array)$request->input('tag')
+        ]);
         $article->tag()->sync((array)$request->input('tag'));
 
         return $article;
